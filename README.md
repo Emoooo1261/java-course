@@ -2,7 +2,7 @@
 
 Homework tasks and final project for Major Java Technologies course at FMI
 
-| # | Task             |
+| # | Task                |
 |:--|:------------------- |:
 | 1 | [Shopping Portal](https://github.com/fmi/java-course/tree/master/homeworks/01-shopping-portal) |
 | 2 | [Authorship Detection](https://github.com/fmi/java-course/tree/master/homeworks/02-authorship-detection) |
