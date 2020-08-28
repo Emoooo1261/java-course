@@ -1,2 +1,3 @@
 # java-course
-Major Java technologies course at FMI
+
+Homework tasks and final project for Major Java technologies course at FMI
