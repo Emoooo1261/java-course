@@ -1,5 +1,8 @@
 package bg.sofia.fmi.mjt.battleships.game;
 
+/**
+ * Simple class storing FieldEnum variable.
+ */
 public class Field {
     private FieldEnum field;
 

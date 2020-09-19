@@ -2,15 +2,37 @@ package bg.sofia.fmi.mjt.battleships.game;
 
 import java.util.ArrayList;
 
+/**
+ * Represents the board with the ships for the game.
+ * Also validates placement for the ships on the board
+ * and prints the board with the respective fields
+ * (hit field, field with ship, empty field or hit field with ship).
+ */
 public class Board {
     public static final int BOARD_SIZE = 10;
-    public static final int SHIPS_NUMBER = 4;
+    public static final int BIGGEST_SHIP_SIZE = 5;
+    public static final int SMALLEST_SHIP_SIZE = 2;
+    public static final int MAX_NUMBER_OF_SHIPS = BIGGEST_SHIP_SIZE - SMALLEST_SHIP_SIZE + 1;
     public static final int MAX_COORDINATES_INPUT_STRING_LENGTH = 3;
     public static final int MIN_COORDINATES_INPUT_STRING_LENGTH = 2;
+    public static final String X = "   1 2 3 4 5 6 7 8 9 10";
+    public static final String X1 = "   _ _ _ _ _ _ _ _ _ _";
+    public static final String REGEX_ONLY_INTEGER = "-?(0|[1-9]\\d*)";
 
     private ArrayList<ArrayList<Field>> gameBoard;
     private Ship[] ships;
     private int shipIndex = 0;
+
+    public Board() {
+        gameBoard = new ArrayList<>(BOARD_SIZE);
+        ships = new Ship[MAX_NUMBER_OF_SHIPS];
+        for (int i = 0; i < BOARD_SIZE; ++i) {
+            gameBoard.add(new ArrayList<>());
+            for (int j = 0; j < BOARD_SIZE; ++j) {
+                gameBoard.get(i).add(new Field());
+            }
+        }
+    }
 
     public ArrayList<ArrayList<Field>> getGameBoard() {
         return gameBoard;
@@ -24,34 +46,45 @@ public class Board {
         return shipIndex;
     }
 
-    public Board() {
-        initializeGameBoard();
-    }
-
-    private void initializeGameBoard() {
-        gameBoard = new ArrayList<>(BOARD_SIZE);
-        ships = new Ship[SHIPS_NUMBER];
-
-        for (int i = 0; i < BOARD_SIZE; ++i) {
-            gameBoard.add(new ArrayList<>());
-            for (int j = 0; j < BOARD_SIZE; ++j) {
-                gameBoard.get(i).add(new Field());
+    public boolean areAllShipsSunken() {
+        for (Ship ship : ships) {
+            if (!ship.getIsShipSunk()) {
+                return false;
             }
         }
-
+        return true;
     }
-    //TODO fix the ability to hit field that was already hit...
-    public void updateBoard(CoordinatesPair coordinates) {
-        if(gameBoard.get(coordinates.getXCoord()).get(coordinates.getYCoord()).equals(FieldEnum.FIELD_WITH_SHIP)) {
+
+    public boolean updateBoard(final CoordinatesPair coordinates) throws Exception {
+        boolean hit = false;
+        FieldEnum hitField = gameBoard.get(coordinates.getXCoord()).get(coordinates.getYCoord()).getField();
+        if (hitField == (FieldEnum.FIELD_WITH_SHIP)) {
             gameBoard.get(coordinates.getXCoord()).get(coordinates.getYCoord()).setField(FieldEnum.HIT_FIELD_WITH_SHIP);
-        } else {
+            for (int i = 0; i < shipIndex; ++i) {
+                if (!ships[i].getIsShipSunk()) {
+                    if (ships[i].areTheCoordinatesFromThisShip(coordinates)) {
+                        ships[i].hitShip();
+                        hit = true;
+                    }
+                }
+            }
+        } else if (hitField== FieldEnum.EMPTY_FIELD) {
             gameBoard.get(coordinates.getXCoord()).get(coordinates.getYCoord()).setField(FieldEnum.HIT_EMPTY_FIELD);
-        }
+        } //else you already have hit this field
+        return hit;
+    }
+
+    public void setHitShipField(final CoordinatesPair coordinates) {
+        gameBoard.get(coordinates.getXCoord()).get(coordinates.getYCoord()).setField(FieldEnum.HIT_FIELD_WITH_SHIP);
+    }
+
+    public void setHitEmptyField(final CoordinatesPair coordinates) {
+        gameBoard.get(coordinates.getXCoord()).get(coordinates.getYCoord()).setField(FieldEnum.HIT_EMPTY_FIELD);
     }
 
     public void printBoard() {
-        System.out.println("   1 2 3 4 5 6 7 8 9 10");
-        System.out.println("   _ _ _ _ _ _ _ _ _ _");
+        System.out.println(X);
+        System.out.println(X1);
         char letter = 'A';
         for (int i = 0; i < BOARD_SIZE; ++i) {
             System.out.print(letter++ + " |");
@@ -81,6 +114,9 @@ public class Board {
         } else {
             return false;
         }
+        if (!splitCoords[1].matches(REGEX_ONLY_INTEGER)) {
+            return false;
+        }
         int yNumCoord = Integer.parseInt(splitCoords[1]);
         if (yNumCoord < 1 || yNumCoord > BOARD_SIZE) {
             return false;
@@ -93,17 +129,17 @@ public class Board {
 
     public boolean checkValidShipCoordinates(
             final int size, final CoordinatesPair startCoords, final CoordinatesPair endCoords) {
-        return size <= SHIPS_NUMBER + 1 && size > 1
+        return size <= BIGGEST_SHIP_SIZE && size > 1
                 && startCoords.getXCoord() >= 0 && startCoords.getYCoord() >= 0
                 && endCoords.getXCoord() >= 0 && endCoords.getYCoord() >= 0
                 && startCoords.getXCoord() < BOARD_SIZE && startCoords.getYCoord() < BOARD_SIZE
                 && endCoords.getXCoord() < BOARD_SIZE && endCoords.getYCoord() < BOARD_SIZE
                 && ((startCoords.getXCoord() == endCoords.getXCoord()
-                && endCoords.getYCoord() - startCoords.getYCoord() == size
-                || startCoords.getYCoord() - endCoords.getYCoord() == size)
+                && (endCoords.getYCoord() - startCoords.getYCoord() == size
+                || startCoords.getYCoord() - endCoords.getYCoord() == size))
                 || (startCoords.getYCoord() == endCoords.getYCoord()
-                && endCoords.getXCoord() - startCoords.getXCoord() == size
-                || startCoords.getXCoord() - endCoords.getXCoord() == size));
+                && (endCoords.getXCoord() - startCoords.getXCoord() == size
+                || startCoords.getXCoord() - endCoords.getXCoord() == size)));
     }
 
     public boolean checkCollision(
@@ -122,12 +158,7 @@ public class Board {
                 }
             }
         } else {
-            int x;
-            if (endCoords1.getXCoord() > startCoords1.getXCoord()) {
-                x = startCoords1.getXCoord();
-            } else {
-                x = endCoords1.getXCoord();
-            }
+            int x = Math.min(endCoords1.getXCoord(), startCoords1.getXCoord());
             int y = startCoords1.getYCoord();
             for (int i = 0; i < size; ++i) {
                 if (gameBoard.get(x).get(y + i).getField().equals(FieldEnum.FIELD_WITH_SHIP)) {
@@ -141,25 +172,15 @@ public class Board {
     public void placeShipOnGameBoard(final Ship ship) {
         if (ship.getStartCoordinates().getXCoord() == ship.getEndCoordinates().getXCoord()) {
             int x = ship.getStartCoordinates().getXCoord();
-            int y;
-            if (ship.getStartCoordinates().getYCoord() > ship.getEndCoordinates().getYCoord()) {
-                y = ship.getEndCoordinates().getYCoord();
-            } else {
-                y = ship.getStartCoordinates().getYCoord();
-            }
+            int y = Math.min(ship.getStartCoordinates().getYCoord(), ship.getEndCoordinates().getYCoord());
             for (int i = 0; i < ship.getSize(); ++i) {
                 gameBoard.get(x).get(y + i).setField(FieldEnum.FIELD_WITH_SHIP);
             }
         } else {
-            int x;
-            if (ship.getEndCoordinates().getXCoord() > ship.getStartCoordinates().getXCoord()) {
-                x = ship.getStartCoordinates().getXCoord();
-            } else {
-                x = ship.getEndCoordinates().getXCoord();
-            }
+            int x = Math.min(ship.getEndCoordinates().getXCoord(), ship.getStartCoordinates().getXCoord());
             int y = ship.getStartCoordinates().getYCoord();
             for (int i = 0; i < ship.getSize(); ++i) {
-                gameBoard.get(x).get(y + i).setField(FieldEnum.FIELD_WITH_SHIP);
+                gameBoard.get(x + i).get(y).setField(FieldEnum.FIELD_WITH_SHIP);
             }
         }
     }

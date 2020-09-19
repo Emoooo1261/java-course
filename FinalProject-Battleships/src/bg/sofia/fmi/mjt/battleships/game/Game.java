@@ -1,11 +1,27 @@
 package bg.sofia.fmi.mjt.battleships.game;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Scanner;
 
+/**
+ * The main logic for the game action.
+ * Firstly communicates with the Client for the input of their ships.
+ * Then it sends message READY to the server and waits for an answer from the opponent.
+ * After both players put their ships on their boards, it starts sending
+ * coordinates of fields the players want to hit and gets answer if a the field has a
+ * ship on it. When one of the players hits all of the ships of their opponent the game ends.
+ */
 public class Game implements Runnable {
+    public static final String YOUR_BOARD = "\tYOUR BOARD";
+    public static final String ENEMY_BOARD = "\tENEMY BOARD";
+    public static final String INVALID_COORDINATES = "Invalid coordinates!";
+    public static final String READY = "READY";
+    public static final String THIS_IS_THE_WINNER = "THIS IS THE WINNER!";
+    public static final String CONTINUE = "CONTINUE";
+    public static final String THIS_IS_THE_LOSER = "THIS IS THE LOSER!";
+    public static final String HIT = "HIT";
+    public static final String MISS = "MISS";
     private BufferedReader reader;
     private PrintWriter writer;
 
@@ -14,65 +30,34 @@ public class Game implements Runnable {
         this.writer = writer;
     }
 
-    public boolean coordinatesInputValidator(final String inputCoordinates, String[] checkedCoordinates) {
-        checkedCoordinates = inputCoordinates.split(" ", 2);
-        for (int i = 0; i < checkedCoordinates.length; ++i) {
-            if (checkedCoordinates[i].length() > Board.MAX_COORDINATES_INPUT_STRING_LENGTH
-                    || checkedCoordinates[i].length() < Board.MIN_COORDINATES_INPUT_STRING_LENGTH) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     public void inputShips(Board board) {
         Scanner scanner = new Scanner(System.in);
         board.printBoard();
-        String coordinatesString;
+        String startCoordinatesString;
+        String endCoordinatesString;
         do {
-            coordinatesString = scanner.nextLine();
-            String[] checkedCoordinates = new String[2];
-            if (coordinatesInputValidator(coordinatesString, checkedCoordinates)) {
-                if (board.setShip(Board.SHIPS_NUMBER - board.getShipIndex() + 1, checkedCoordinates[0], checkedCoordinates[1])) {
-                    board.printBoard();
-                }
+            System.out.println("Enter starting and ending coordinates for ship with size " + (Board.BIGGEST_SHIP_SIZE - board.getShipIndex()));
+            startCoordinatesString = scanner.nextLine();
+            endCoordinatesString = scanner.nextLine();
+            if (board.setShip(Board.BIGGEST_SHIP_SIZE - board.getShipIndex(), startCoordinatesString, endCoordinatesString)) {
+                board.printBoard();
             } else {
-                System.out.println("Enter valid ship coordinates!");
+                System.out.println("Enter valid ship coordinates! For ship with size " + (Board.BIGGEST_SHIP_SIZE - board.getShipIndex()));
             }
-
-        } while (Board.SHIPS_NUMBER < board.getShipIndex());
+        } while (Board.MAX_NUMBER_OF_SHIPS > board.getShipIndex());
     }
 
-//    public boolean coordinatesInputValidator(final String coordinates) {
-//        if(coordinates.length() > Board.MAX_COORDINATES_INPUT_STRING_LENGTH
-//                || coordinates.length() < Board.MIN_COORDINATES_INPUT_STRING_LENGTH) {
-//            return false;
-//        }
-//        String[] splitCoordinates = coordinates.split("", 2);
-//        if (splitCoordinates[0].length() != 1) {
-//            return false;
-//        }
-//        char xCoord = splitCoordinates[0].charAt(0);
-//        if ((xCoord < 'a' || xCoord >= 'a' + Board.BOARD_SIZE)
-//                && (xCoord < 'A' || xCoord >= 'A' + Board.BOARD_SIZE) {
-//            return false;
-//        }
-//        int yCoord = Integer.parseInt(splitCoordinates[1]);
-//        if (yCoord < 1 || yCoord > Board.BOARD_SIZE) {
-//            return false;
-//        }
-//        return true;
-//    }
-
-    public void gameplay(Board player1) throws IOException {
+    //TODO fix hit already hit position, also maybe if you hit ship it should be your turn again
+    public void gameplay(Board player1) throws Exception {
         Scanner scanner = new Scanner(System.in);
         String reply;
         Board player2 = new Board();
-
         while (true) {
-            System.out.println("\tYOUR BOARD");
+            System.out.println(YOUR_BOARD);
             player1.printBoard();
-            System.out.println("\tENEMY BOARD");
+            System.out.println("- - - - - - - - - - - -");
+            System.out.println(ENEMY_BOARD);
+            player2.printBoard();
             String command;
             CoordinatesPair numCoordinates = new CoordinatesPair();
             boolean isValidCmd = false;
@@ -83,29 +68,50 @@ public class Game implements Runnable {
                     writer.println(command);
                     isValidCmd = true;
                 } else {
-                    System.out.println("Invalid coordinates!");
+                    System.out.println(INVALID_COORDINATES);
                 }
-            } while (isValidCmd);
+            } while (!isValidCmd);
             reply = reader.readLine();
             System.out.println("Your opponent hit: " + reply);
             CoordinatesPair enemyNumCoordinatesHit = new CoordinatesPair();
             player1.convertStringCoordinatesToCoordinatesPair(reply, enemyNumCoordinatesHit);
-            player1.updateBoard(enemyNumCoordinatesHit);
-            player2.updateBoard(numCoordinates);
+            if (player1.updateBoard(enemyNumCoordinatesHit)) {
+                writer.println(HIT);
+            } else {
+                writer.println(MISS);
+            }
+            reply = reader.readLine();
+            if (reply.equals(HIT)) {
+                player2.setHitShipField(numCoordinates);
+            } else { //MISS
+                player2.setHitEmptyField(numCoordinates);
+            }
+            if (player1.areAllShipsSunken()) {
+                System.out.println("You lose!");
+                writer.println(THIS_IS_THE_LOSER);
+                break;
+            } else {
+                writer.println(CONTINUE);
+            }
+            reply = reader.readLine();
+            if (reply.equals("You sank all of your opponent's ships! You win!")) {
+                writer.println(THIS_IS_THE_WINNER);
+                System.out.println(reply);
+                //player2.setHitShipField(numCoordinates);
+                break;
+            }
         }
     }
-
-
     @Override
     public void run() {
         Board player1 = new Board();
         inputShips(player1);
-        System.out.println("Waiting for your opponent to set their ships.\n");
-        writer.println("ready");
+        System.out.println("Waiting for your opponent to set their ships...\n");
+        writer.println(READY);
         try {
             reader.readLine();
             gameplay(player1);
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.out.println("Problem with the connection occurred. Please restart the program.");
         }
     }

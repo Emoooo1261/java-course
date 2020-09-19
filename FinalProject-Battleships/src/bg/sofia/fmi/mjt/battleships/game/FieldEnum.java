@@ -1,5 +1,9 @@
 package bg.sofia.fmi.mjt.battleships.game;
 
+/**
+ * All the possible variables for a field on the board.
+ * And their respective string equivalent.
+ */
 public enum FieldEnum {
     EMPTY_FIELD("_"),
     FIELD_WITH_SHIP("*"),
@@ -8,7 +12,7 @@ public enum FieldEnum {
 
     private String value;
 
-    FieldEnum(String value) {
+    FieldEnum(final String value) {
         this.value = value;
     }
 

@@ -2,6 +2,9 @@ package bg.sofia.fmi.mjt.battleships.game;
 
 import java.util.Objects;
 
+/**
+ * Simple class for storing the two integer coordinates (x and y).
+ */
 public class CoordinatesPair {
     private int xCoord;
     private int yCoord;
