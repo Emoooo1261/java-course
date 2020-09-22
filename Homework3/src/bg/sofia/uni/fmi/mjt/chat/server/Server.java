@@ -1,11 +1,8 @@
 package bg.sofia.uni.fmi.mjt.chat.server;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -14,10 +11,6 @@ import java.util.concurrent.Executors;
 public class Server {
     public static final int SERVER_PORT = 4444;
     private static final int MAX_EXECUTOR_THREADS = 10;
-
-    //ArrayList
-    //static HashSet<ClientRequestHandler> clients = new HashSet<>();
-
 
     public static void main(String[] args) {
         Map<String, Socket> clientsMap = new ConcurrentHashMap<>();
